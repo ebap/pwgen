@@ -1,0 +1,297 @@
+
+<!-- 
+
+    (Damn simple) Password Generator
+
+
+    ."".    ."",
+    |  |   /  /
+    |  |  /  /
+    |  | /  /
+    |  |/  ;-._ 
+    }  ` _/  / ;
+    |  /` ) /  /
+    | /  /_/\_/\
+    |/  /      |
+    (  ' \ '-  |
+     \    `.  /
+      |      |
+      |      |
+
+
+-->
+<html lang="en-US">
+    <head>
+        <meta charset="utf-8">
+        <title>Password Generator</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Let the users scale, if their screen is very tiny... -->
+        <script>
+            // URL Parameters
+            const
+                queryString = window.location.search,
+                urlParams = new URLSearchParams(queryString),
+                urlEntries = urlParams.entries();
+            // Copy to Clipboard
+            function copyToClipboard(inputElement) {
+                // Clipboard Action
+                inputElement.focus();
+                inputElement.select();
+                try {
+                    // Success
+                    document.execCommand('copy');
+                    inputElement.value = '';
+                    inputElement.placeholder = 'Copied to clipboard!';
+                    inputElement.disabled = true;
+                    setTimeout(function() {
+                        updatePassword();
+                        inputElement.placeholder = '';
+                        inputElement.disabled = false;
+                    }, 2000);
+                } catch (error) {
+                    // Error
+                    inputElement.removeAttr('onclick');
+                    inputElement.removeAttr('readonly');
+                }
+            }
+            // Simple Password Generator
+            // @TODO: Better entropy by deciding which Group to pick a Char from first,
+            // then selecting one randomly. Currently, numbers are less likely to get
+            // picked, as the other Groups from the Charset contain more Characters
+            function generatePassword(
+                includeLowercase = true,
+                includeUppercase = true,
+                includeNumbers = true,
+                includeSpecial = false,
+                excludeCharacters = '1lIoO0',
+                length = 16
+            ) {
+                // Charset Definitions
+                let charset = '';
+                let lowercase = 'abcdefghijklmnopqrstuvwxyz';
+                let uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+                let numbers = '0123456789';
+                let special = '@<({[/=\\]})>!?$%&#*-+.,;:_'; // N.B.: Backslash escaped
+                // Building the Charset for the Generator
+                if (includeLowercase) charset += lowercase;
+                if (includeUppercase) charset += uppercase;
+                if (includeNumbers) charset += numbers;
+                if (includeSpecial) charset += special;
+                // Exclude List
+                if (excludeCharacters) charset = charset.replace(new RegExp(excludeCharacters.split('').join('|'), 'g'), '');
+                // Generate a Password with the selected Chars of the given Length
+                let password = '';
+                for (let i = 0, n = charset.length; i < length; ++i) {
+                    password += charset.charAt(Math.floor(Math.random() * n));
+                }
+                return password;
+            }
+            // Get Form Data Object
+            // Could be done like this too: new URLSearchParams(new FormData('form')).toString();
+            // Though default behaviour is somethimes stupid (Checkboxes 'on' or not present...)
+            // See: https://stackoverflow.com/questions/11661187/form-serialize-javascript-no-framework
+            function getFormDataObject() {
+                let object = {};
+                document.querySelectorAll('form input').forEach(input => {
+                    var name = input.name;
+                    // Ignore Input Fields without a name-Attribute
+                    if (name) {
+                        // Set Value (Checkbox: 1 for on, 0 for off)
+                        var value;
+                        if (input.type == 'checkbox') {
+                            value = input.checked ? 1 : 0;
+                        } else {
+                            value = input.value;
+                        }
+                        object[name] = value;
+                    }
+                });
+                return object;
+            }
+            // Convert (any) Object to an URL String
+            function convertObjectToURLString(object) {
+                var array = [];
+                for (var property in object)
+                    if (object.hasOwnProperty(property)) {
+                        array.push(encodeURIComponent(property) + '=' + encodeURIComponent(object[property]));
+                    }
+                return '?' + array.join('&');
+            }
+            // Set Form Values From URL
+            function setFormValuesFromURL() {
+                for (const urlEntry of urlEntries) {
+                    // Parse Entry
+                    let name = urlEntry[0];
+                    let value = urlEntry[1];
+                    // Find Input
+                    let input = document.querySelector('form input[name="' + name + '"]');
+                    if (input) {
+                        // Set Input Value
+                        if (input.type == 'checkbox') {
+                            if (value == '1') {
+                                input.checked = true;
+                            } else {
+                                input.checked = false;
+                            }
+                        } else {
+                            input.value = value;
+                        }
+                    }
+                }
+            }
+            // Update Password
+            var updatePassword = function (event) {
+                // Update URL
+                let url = convertObjectToURLString(getFormDataObject());
+                history.replaceState({}, '', url);
+                // Retrieve Form Data
+                let lowercarse = document.querySelector('form input[name="lowercase"]').checked;
+                let uppercase = document.querySelector('form input[name="uppercase"]').checked;
+                let numbers = document.querySelector('form input[name="numbers"]').checked;
+                let special = document.querySelector('form input[name="special"]').checked;
+                let exclude = document.querySelector('form input[name="exclude"]').value;
+                let length = document.querySelector('form input[name="length"]').value;
+                // Handover to Password Generator
+                let password = generatePassword(lowercarse, uppercase, numbers, special, exclude, length);
+                // Set the Password Value
+                document.getElementById('password').value = password;
+            }
+            // Window Load
+            window.onload = function () {
+                // 0. Fade-In Animation
+                document.body.classList.add('loaded');
+                // 1. Check the URL for existing Parameters
+                setFormValuesFromURL();
+                // 2. Initialize (same as on Form Change)
+                updatePassword();
+                // 3. Listen for Form Changes to update URL & Password accordingly
+                document.querySelectorAll('#password-generator input').forEach(input => {
+                    //input.addEventListener('change', handleFormChange);
+                    input.addEventListener('input', updatePassword);
+                })
+            }
+        </script>
+        <style>
+            /* Resets */
+            * {
+                margin: 0;
+                padding: 0;
+            }
+            /* Font Smoothing */
+            * {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+            }
+            /* White Text, Black Background, all centered */
+            body {
+                font-family:Consolas,Monaco,Lucida Console,Liberation Mono,DejaVu Sans Mono,Bitstream Vera Sans Mono,Courier New, monospace, serif;
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: center;
+                align-items: center;
+                font-size: 2vw; /* Fluid Font */
+                transition: font-size 125ms ease-in-out, transform 375ms ease-in-out, opacity 750ms ease-in-out, color 750ms ease-in-out;
+                background: black;
+                color: white;
+            }
+            body:not(.loaded) {
+                opacity: 0;
+                transform: scale(0.75);
+                color: black;
+            }
+            @media screen and (max-width: 600px) {
+                body {
+                    /* align-items: flex-end; */
+                    font-size: 3vw;
+                }
+            }
+            /* Password Generator */
+            #password-generator {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                grid-gap: .25em;
+                margin: 1em;
+                padding: 1em;
+                background: rgba(255,255,255,0.1);
+            }
+            #password-generator > * {
+                justify-items: center;
+                align-items: center;
+                align-self: center;
+            }
+            #password-generator > *:first-child {
+                margin-top: 0;
+            }
+            #password-generator > *:last-child {
+                margin-bottom: 0;
+            }
+            #password-generator h1 {
+                display: grid;
+                grid-column: 1 / 3;
+            }
+            #password-generator small {
+                display: grid;
+                grid-column: 1 / 3;
+                margin-bottom: .5em;
+                text-align: center;
+            }
+            #password-generator h1[onclick] {
+                cursor: pointer;
+            }
+            /* Unobtrusive Input and Button Fields */
+            input, button {
+                font-family: inherit;
+                font-size: inherit;
+                background: inherit;
+                color: inherit;
+                text-align: center;
+                border: 0.01em solid white;
+                border-radius: 0;
+                /* outline: none; */
+                margin: 0 .125em;
+                padding: .25em;
+            }
+            /* Increase Checkbox Size for better Usability */
+            input[type="checkbox"] {
+                width: 1em;
+                height: 1em;
+            }
+            /* Indicate the Copy to Clipboard Function with Pointer Cursor */
+            input[readonly][onclick] {
+                cursor: pointer;
+            }
+            /* Password/Result Field Placeholder Notice ("Copied to clipboard!") */
+            input[disabled] {
+                font-style: italic;
+            }
+        </style>
+    </head>
+    <body>
+        <!-- Password Generator Container -->
+        <form id="password-generator">
+            <!-- Title -->
+            <h1 onclick="window.location.assign('/pwgen')" title="Click to reset">Password Generator</h1>
+            <small>Click on the Result to copy to Clipboard.<br>Add a Bookmark to save your Settings.</small>
+            <!-- Charset: Lowercase -->
+            <label for="lowercase">Lowercase</label>
+            <input type="checkbox" name="lowercase" id="lowercase" checked>
+            <!-- Charset: Uppercase -->
+            <label for="uppercase">Uppercase</label>
+            <input type="checkbox" name="uppercase" id="uppercase" checked>
+            <!-- Charset: Numbers -->
+            <label for="numbers">Numbers</label>
+            <input type="checkbox" name="numbers" id="numbers" checked>
+            <!-- Charset: Special Characters -->
+            <label for="special">Special</label>
+            <input type="checkbox" name="special" id="special">
+            <!-- Charset: Exclude -->
+            <label for="exclude">Exclude</label>
+            <input id="exclude" name="exclude" placeholder="None" value="1lIoO0">
+            <!-- Length -->
+            <label for="length">Length</label>
+            <input id="length" name="length" type="number" value="16">
+            <!-- Result -->
+            <label for="password">Result</label>
+            <input id="password" onclick="copyToClipboard(this);" readonly>
+        </form>
+    </body>
+</html>
